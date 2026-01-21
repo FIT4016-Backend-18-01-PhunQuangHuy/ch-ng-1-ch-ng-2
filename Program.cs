@@ -1,34 +1,45 @@
 using Microsoft.EntityFrameworkCore;
-using SchoolManagement.Data;
+using OrderManagementApp.Data;
+using OrderManagementApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services to the container
 builder.Services.AddControllersWithViews();
 
-// Register EF Core DbContext with SQL Server connection string
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Configure Entity Framework with SQL Server
+builder.Services.AddDbContext<OrderDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") 
+        ?? "Server=(localdb)\\mssqllocaldb;Database=OrderManagement;Trusted_Connection=true;TrustServerCertificate=true;"));
 
-
+// Register OrderService
+builder.Services.AddScoped<OrderService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
 }
-app.UseRouting();
 
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
 app.UseAuthorization();
 
-// Serve static files from wwwroot
-app.UseStaticFiles();
+// Initialize database
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+    
+    // Create database and apply migrations
+    dbContext.Database.EnsureCreated();
+}
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
+    pattern: "{controller=Orders}/{action=Index}/{id?}");
 
 app.Run();
